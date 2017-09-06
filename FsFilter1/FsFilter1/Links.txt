@@ -1,0 +1,11 @@
+
+Setting Up Kernel-Mode Debugging of a Virtual Machine Manually
+https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/attaching-to-a-virtual-machine--kernel-mode-
+
+Setting Up the Target Virtual Machine
+In the virtual machine, in an elevated Command Prompt window, enter the following commands.
+bcdedit /debug on
+bcdedit /dbgsettings serial debugport:n baudrate:115200
+where n is the number of a COM port on the virtual machine.
+Reboot the virtual machine.
+In the virtual machine, configure the COM port to map to a named pipe. The debugger will connect through this pipe. For more information about how to create this pipe, see your virtual machine's documentation.
