@@ -9,3 +9,102 @@ bcdedit /dbgsettings serial debugport:n baudrate:115200
 where n is the number of a COM port on the virtual machine.
 Reboot the virtual machine.
 In the virtual machine, configure the COM port to map to a named pipe. The debugger will connect through this pipe. For more information about how to create this pipe, see your virtual machine's documentation.
+
+
+2.  https://www.codeproject.com/Tips/545835/Kernel-Mode-Debugging-in-a-VM-using-Visual-Studio
+Kernel-Mode Debugging in a VM using Visual Studio 2012
+
+Introduction
+This tip is about how to setup Kernel-Mode debugging in a VM using Visual Studio 2012. This tip will be helpful for people new to driver development that wish to create, build, deploy, and debug a simple "HelloKernel" project.
+
+Background
+The setup process can be divided into three parts:
+
+Setting up the Virtual Machine
+Setting up Visual Studio 2012
+Setting up your HelloKernel project
+Each part will be explained step by step.
+
+How to Setup the Virtual Machine
+The Virtual Machine setup was tested on VMWare 9.0 running Windows 7 x64 OS.
+
+Create a new VM, use default settings (tested on VmWare, Win7 x64)
+Add a serial port to the VM, follow these steps:
+Right click VM -> Settings -> Add -> Serial Port -> Output to named pipe
+Named pipe = \\.\pipe\com_2
+First combo box = The end is the server
+Second combo box = The other end is an application
+Connect at power on = Checked
+Finish
+Yield CPU on poll = Checked
+In the VM, in an elevated command prompt window, enter the following commands:
+bcdedit /debug on
+bcdedit /dbgsettings serial debugport:2 baudrate:115200
+In Windows, search for "Manage advanced sharing settings":
+Set "Turn on file and printer sharing"
+Set "Turn off password protected sharing"
+In Windows, search for "Computer Management":
+Local Users and Groups -> Users:
+Administrator -> Right Click -> Properties -> Uncheck Account is disabled
+Administrator -> Right Click -> Set Password -> Set your password
+Install WDK Test Target, the setup can be found on the host computer in the following path:
+"C:\Program Files (x86)\Windows Kits\8.1\Remote"
+Reboot the VM
+How to Setup Visual Studio
+Install Visual Studio 2012 (or above) and WDK 8 (or above)
+Run Visual Studio as administrator
+On the main toolbar, press Driver-> Test -> Configure Computers -> Add New Computer:
+Computer name = VM name
+Select Provision computer and choose debugger settings
+Next
+Connection Type = Serial
+Pipe = Checked
+Reconnect = Checked
+Port = \\.\pipe\com_2
+Target Port = com2
+Next -> Finish (Don’t worry if Status is Undetermined)
+Reboot the VM
+Create a snapshot in the VM called "Configured"
+You may be prompted for Username\Password, enter Administrator\YourPassword
+Important! Currently Visual Studio 2012 has a weird defect that causes the steps above to fail if your Windows username has spaces in it. The active username must have no spaces !
+How to Setup Your HelloKernel Project
+Use this tutorial to create your HelloKernel project:
+In order to debug your project, do the following:
+OPTION I
+Press F6 (Important! A newly configured VM requires one successful build before debugging)
+Press F5
+When Visual Studio changes to DebugMode, on the main toolbar press Debug -> Break All
+In the "Debugger Immediate Window" write the following commands:
+bu HelloKernel!DriverEntry (Tells the debugger to break on DriverEntry)
+g (Tells the debugger to continue)
+OPTION II
+Open two instances of VS, one will be the Deployer and the second the Debugger
+[In Debugger] On the main toolbar press Debug -> Attach to Process
+[In Debugger] Select "Windows Kernel Mode Debugger" and attach to the VM
+[In Debugger] When Visual Studio changes to DebugMode, on the main toolbar press Debug -> Break All
+[In Debugger] In the "Debugger Immediate Window", write the following commands:
+[In Debugger] bu HelloKernel!DriverEntry (Tells the debugger to break on DriverEntry)
+[In Debugger] g (Tells the debugger to continue)
+[In Deployer] Press F6
+OPTION III
+Setup VS as a Debugger, as done in OPTION II
+Copy the package folder located at "HelloWorld\Win7Debug\HelloWorld Package" into the VM
+In the VM, create a new file named install.bat with the following commands:
+sc stop HelloWorld
+"C:\DriverTest\devcon.exe" install "C:\HelloWorld Package\HelloWorld.inf" Root\HelloWorld
+sc start HelloWorld
+In the VM, run install.bat as administrator
+If prompted, press "Install this driver software anyway"
+In order to reinstall a newer version of the driver, just update the package folder and rerun install.bat
+Your code should break on DriverEntry, and you can start debugging
+Tips
+
+Tip I - Be sure your solution configuration is valid (Win7 x86 Debug\Win7 x64 Release ...)
+Tip II - Redeploying a driver to the VM after it had one successful deployment may cause problems (Such as the VM wanting to reboot).
+One possible solution would be to set a valid DriverUnload function in your driver.
+The DriverUnload function is a member of the PDRIVER_OBJECT received at DriverEntry.
+Another solution would be to return to the "Configured" snapshot before each deployment.
+Summary
+I hope this tip will help people new to driver development in getting started quickly.
+
+It may seem straight forward, but I must say I encountered many problems trying to setup my environment, with nearly no useful and complete help found on the web.
